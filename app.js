@@ -105,36 +105,36 @@ function whatsappLinkFor(interest) {
 // equivalente, cai para a home do idioma. Injetado por JS em todas as páginas.
 // ─────────────────────────────────────────────────────────────
 (function initLangSwitch() {
-  // Mapa de páginas equivalentes entre idiomas, RELATIVO à raiz do site.
-  // Cada linha = a "mesma" página nos três idiomas. Sem barra inicial para
-  // que funcione sob qualquer prefixo de host (raiz, /computer/a/..., etc).
+  // Mapa de páginas equivalentes entre idiomas — caminhos ABSOLUTOS limpos
+  // (sem .html) alinhados com "cleanUrls: true" do Vercel. Evita redirect duplo.
+  // Cada linha = a "mesma" página nos três idiomas.
   const PAGE_MAP = [
-    { pt: 'index.html',  en: 'en/index.html',   es: 'es/index.html'  }, // home
-    { pt: 'precos.html', en: 'en/pricing.html', es: 'es/precios.html' }, // preços
+    { pt: '/',       en: '/en',         es: '/es'         }, // home
+    { pt: '/precos', en: '/en/pricing', es: '/es/precios' }, // preços
   ];
-  const HOME = { pt: 'index.html', en: 'en/index.html', es: 'es/index.html' };
+  const HOME = { pt: '/', en: '/en', es: '/es' };
 
-  // Idioma atual vem do <html lang> (confiável), não do pathname.
-  // Só o arquivo final (basename) da URL importa para casar no PAGE_MAP.
-  function basename(p) {
-    const clean = p.split('?')[0].split('#')[0].replace(/\/+$/, '');
-    const last = clean.substring(clean.lastIndexOf('/') + 1);
-    return last || 'index.html'; // '/', '/en/' etc → home
+  // Normaliza um pathname para casar contra as chaves do PAGE_MAP.
+  // Remove query, hash, .html final e barra final (exceto raiz).
+  function normalize(p) {
+    let clean = p.split('?')[0].split('#')[0];
+    clean = clean.replace(/\.html$/i, '');
+    if (clean.length > 1) clean = clean.replace(/\/+$/, '');
+    // Trata /en/ e /es/ como home do idioma
+    if (clean === '/en/index' || clean === '/en') return '/en';
+    if (clean === '/es/index' || clean === '/es') return '/es';
+    if (clean === '/index' || clean === '') return '/';
+    return clean;
   }
-  const curFile = basename(window.location.pathname);
-
-  // Prefixo relativo para VOLTAR à raiz do site a partir da página atual.
-  // Páginas em /en/ e /es/ estão um nível abaixo da raiz → precisam de '../'.
-  const depthPrefix = (LANG === 'pt') ? '' : '../';
+  const curPath = normalize(window.location.pathname);
 
   // Descobre para onde ir em cada idioma, preservando a página atual.
   function targetFor(lang) {
-    // Casa a linha do mapa pelo basename do arquivo atual, em qualquer idioma.
     const row = PAGE_MAP.find((r) => {
-      return basename(r.pt) === curFile || basename(r.en) === curFile || basename(r.es) === curFile;
+      return r.pt === curPath || r.en === curPath || r.es === curPath;
     });
-    const rel = (row && row[lang]) ? row[lang] : HOME[lang];
-    return depthPrefix + rel + window.location.hash;
+    const abs = (row && row[lang]) ? row[lang] : HOME[lang];
+    return abs + window.location.hash;
   }
 
   // Bandeiras SVG (circulares via clip do CSS).
